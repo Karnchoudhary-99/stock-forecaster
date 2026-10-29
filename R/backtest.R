@@ -50,3 +50,58 @@ rolling_origin <- function(x, h, initial, step = 1, method, ...) {
   })
   do.call(rbind, rows)
 }
+
+#' Direction-aware evaluation of a `rolling_origin()` result.
+#'
+#' Directional accuracy needs the previous step *within the same fold*:
+#' for horizon 1 that is the fold's `last_train`, otherwise the previous
+#' horizon's actual (for the actual direction) or forecast (for the
+#' forecast direction). Pooling rows across folds without this would
+#' compare a fold's first step against the previous fold's last step,
+#' which never happened.
+#'
+#' @param bt A data.frame from `rolling_origin()`.
+#' @return A list with `overall` (one-row data.frame of metrics over all
+#'   backtest rows) and `by_horizon` (one row per horizon step).
+
+evaluate_backtest <- function(bt) {
+  required <- c("fold", "horizon", "actual", "forecast", "last_train")
+  if (!all(required %in% names(bt))) {
+    stop("backtest result must have columns: ",
+         paste(required, collapse = ", "))
+  }
+  bt <- bt[order(bt$fold, bt$horizon), ]
+  prev_actual <- numeric(nrow(bt))
+  prev_forecast <- numeric(nrow(bt))
+  for (i in seq_len(nrow(bt))) {
+    if (bt$horizon[i] == 1) {
+      prev_actual[i] <- bt$last_train[i]
+      prev_forecast[i] <- bt$last_train[i]
+    } else {
+      prev_actual[i] <- bt$actual[i - 1]
+      prev_forecast[i] <- bt$forecast[i - 1]
+    }
+  }
+  direction_ok <- sign(bt$actual - prev_actual) ==
+    sign(bt$forecast - prev_forecast)
+  overall <- data.frame(
+    n = nrow(bt),
+    mae = mae(bt$actual, bt$forecast),
+    rmse = rmse(bt$actual, bt$forecast),
+    mape = mape(bt$actual, bt$forecast),
+    directional_accuracy = mean(direction_ok)
+  )
+  by_horizon <- do.call(rbind, lapply(sort(unique(bt$horizon)),
+                                      function(k) {
+    rows <- bt$horizon == k
+    data.frame(
+      horizon = k,
+      n = sum(rows),
+      mae = mae(bt$actual[rows], bt$forecast[rows]),
+      rmse = rmse(bt$actual[rows], bt$forecast[rows]),
+      mape = mape(bt$actual[rows], bt$forecast[rows]),
+      directional_accuracy = mean(direction_ok[rows])
+    )
+  }))
+  list(overall = overall, by_horizon = by_horizon)
+}
