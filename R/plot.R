@@ -89,3 +89,111 @@ method_color <- function(method, index) {
   }
   plot_palette[((index - 1) %% length(plot_palette)) + 1]
 }
+
+#' Build a complete SVG chart: history (solid) plus forecasts (dashed).
+#'
+#' @param history Numeric price vector, oldest first.
+#' @param forecasts Named list of numeric forecast vectors, each the
+#'   same length; every forecast continues from the last history point.
+#' @param title Chart title (escaped before embedding).
+#' @param width,height Canvas size in pixels.
+#' @return A single SVG document string.
+forecast_plot_svg <- function(history, forecasts = list(),
+                              title = "Price forecast",
+                              width = 800, height = 400) {
+  history <- validate_series(history)
+  if (!is.list(forecasts)) {
+    stop("forecasts must be a named list of numeric vectors")
+  }
+  if (length(forecasts) > 0) {
+    if (is.null(names(forecasts)) || any(names(forecasts) == "")) {
+      stop("forecasts must be a named list")
+    }
+    for (name in names(forecasts)) {
+      forecasts[[name]] <- validate_series(forecasts[[name]])
+    }
+    h_lengths <- unique(vapply(forecasts, length, integer(1)))
+    if (length(h_lengths) != 1) {
+      stop("all forecasts must have the same length")
+    }
+  }
+  n <- length(history)
+  h <- if (length(forecasts) == 0) 0 else length(forecasts[[1]])
+  total <- n + h
+  all_y <- c(history, unlist(forecasts, use.names = FALSE))
+  margin <- list(left = 60, right = 20, top = 30, bottom = 40)
+  # One shared y range so history and forecasts are directly comparable.
+  y_range <- range(all_y)
+  y_pad <- if (diff(y_range) == 0) abs(y_range[1]) * 0.05 + 1 else diff(y_range) * 0.05
+  y_range <- y_range + c(-y_pad, y_pad)
+  to_px <- function(xs, ys) {
+    plot_w <- width - margin$left - margin$right
+    plot_h <- height - margin$top - margin$bottom
+    x_px <- if (total == 1) rep(margin$left + plot_w / 2, length(xs)) else {
+      margin$left + (xs - 1) / (total - 1) * plot_w
+    }
+    y_px <- margin$top + (1 - (ys - y_range[1]) / diff(y_range)) * plot_h
+    data.frame(x = x_px, y = y_px)
+  }
+  parts <- c(
+    sprintf('<svg xmlns="http://www.w3.org/2000/svg" width="%s" height="%s" viewBox="0 0 %s %s">',
+            width, height, width, height),
+    sprintf('<text x="%s" y="18" font-family="sans-serif" font-size="15" font-weight="bold">%s</text>',
+            margin$left, svg_escape(title))
+  )
+  # Y gridlines + labels.
+  for (tick in y_ticks(y_range)) {
+    y_px <- to_px(1, tick)$y
+    parts <- c(parts,
+      sprintf('<line x1="%s" y1="%.1f" x2="%s" y2="%.1f" stroke="#e0e0e0" />',
+              margin$left, y_px, width - margin$right, y_px),
+      sprintf('<text x="%s" y="%.1f" font-family="sans-serif" font-size="11" text-anchor="end">%.2f</text>',
+              margin$left - 6, y_px + 4, tick))
+  }
+  # Forecast-origin divider.
+  if (h > 0) {
+    origin_x <- to_px(n, history[n])$x
+    parts <- c(parts,
+      sprintf('<line x1="%.1f" y1="%s" x2="%.1f" y2="%s" stroke="#999999" stroke-dasharray="4,4" />',
+              origin_x, margin$top, origin_x, height - margin$bottom),
+      sprintf('<text x="%.1f" y="%s" font-family="sans-serif" font-size="11" fill="#666666">forecast</text>',
+              origin_x + 4, margin$top + 12))
+  }
+  parts <- c(parts, polyline_svg(to_px(seq_len(n), history), "#222222", 2))
+  legend_y <- height - 12
+  legend_x <- margin$left
+  parts <- c(parts,
+    sprintf('<line x1="%s" y1="%s" x2="%s" y2="%s" stroke="#222222" stroke-width="2" />',
+            legend_x, legend_y, legend_x + 24, legend_y),
+    sprintf('<text x="%s" y="%s" font-family="sans-serif" font-size="12">history</text>',
+            legend_x + 28, legend_y + 4))
+  legend_x <- legend_x + 28 + 52
+  for (i in seq_along(forecasts)) {
+    name <- names(forecasts)[i]
+    color <- method_color(name, i)
+    fc <- forecasts[[i]]
+    pts <- to_px(c(n, (n + 1):(n + h)), c(history[n], fc))
+    parts <- c(parts, polyline_svg(pts, color, 2, dashed = TRUE))
+    parts <- c(parts,
+      sprintf('<line x1="%s" y1="%s" x2="%s" y2="%s" stroke="%s" stroke-width="2" stroke-dasharray="6,4" />',
+              legend_x, legend_y, legend_x + 24, legend_y, color),
+      sprintf('<text x="%s" y="%s" font-family="sans-serif" font-size="12">%s</text>',
+              legend_x + 28, legend_y + 4, svg_escape(name)))
+    legend_x <- legend_x + 28 + 52 + nchar(name) * 7
+  }
+  parts <- c(parts, "</svg>")
+  paste(parts, collapse = "\n")
+}
+
+#' Write a forecast plot SVG to a file (creating parent dirs as needed).
+write_forecast_svg <- function(path, history, forecasts = list(),
+                               title = "Price forecast",
+                               width = 800, height = 400) {
+  svg <- forecast_plot_svg(history, forecasts, title, width, height)
+  dir <- dirname(path)
+  if (!dir.exists(dir)) {
+    dir.create(dir, recursive = TRUE)
+  }
+  writeLines(svg, path)
+  invisible(path)
+}
