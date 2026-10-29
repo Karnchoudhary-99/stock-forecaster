@@ -12,7 +12,8 @@ compared, not just fitted.
 - [x] Backtesting: rolling-origin evaluation
 - [x] Metrics: MAE, RMSE, MAPE, directional accuracy
 - [x] Forecast plots (standalone SVG, no packages)
-- [ ] Forecast report, then self-review checklist, then public
+- [x] Forecast report (Markdown: series summary, forecasts, backtest ranking)
+- [ ] Self-review checklist, then public
 
 ## Quick start
 
@@ -107,6 +108,24 @@ write_forecast_svg("docs/forecast-plot.svg", x,
 Run `Rscript examples/plot.R` to regenerate the sample chart:
 
 ![Sample forecast chart](docs/forecast-plot.svg)
+
+## Forecast reports
+
+`R/report.R` builds a Markdown report: series summary, one forecast
+row per method with a column per horizon step, and — when backtest
+results are supplied — an RMSE-ranked backtest table naming the best
+method. Run `Rscript examples/report.R` to regenerate the sample
+report at [docs/forecast-report.md](docs/forecast-report.md).
+
+```r
+source("R/report.R")
+write_forecast_report("docs/forecast-report.md", x, forecasts, backtest)
+```
+
+On the sample series the report is honest about the headline result:
+naive wins on RMSE at h = 10 but scores 0.00 directional accuracy —
+it never predicts a move — while Holt is effectively tied on RMSE
+with 0.60 directional accuracy.
 
 ## Baseline models
 
