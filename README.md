@@ -13,7 +13,7 @@ compared, not just fitted.
 - [x] Metrics: MAE, RMSE, MAPE, directional accuracy
 - [x] Forecast plots (standalone SVG, no packages)
 - [x] Forecast report (Markdown: series summary, forecasts, backtest ranking)
-- [ ] Self-review checklist, then public
+- [x] Self-review checklist, then public
 
 ## Quick start
 
