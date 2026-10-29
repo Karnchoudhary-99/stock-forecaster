@@ -83,3 +83,60 @@ forecast_table <- function(forecasts) {
   }
   df
 }
+
+#' Build the full Markdown forecast report.
+#'
+#' @param history Numeric price vector, oldest first.
+#' @param forecasts Named list of forecast vectors (see `forecast_table()`).
+#' @param backtest Optional data.frame with `method`, `rmse`, `mae`,
+#'   `mape` and `directional_accuracy` columns (as produced by the
+#'   backtest example); when supplied it is ranked by RMSE and the
+#'   best method is named in the notes.
+#' @param title Report title.
+#' @return A single Markdown string.
+build_forecast_report <- function(history, forecasts,
+                                  backtest = NULL,
+                                  title = "Forecast report") {
+  history <- validate_series(history)
+  forecasts <- check_forecasts(forecasts)
+  h <- length(forecasts[[1]])
+  sections <- c(
+    paste0("# ", title, "\n"),
+    "## Series summary\n",
+    md_table(series_summary(history)),
+    "",
+    sprintf("## Forecasts (%d steps ahead)\n", h),
+    md_table(forecast_table(forecasts))
+  )
+  if (!is.null(backtest)) {
+    required <- c("method", "rmse", "mae", "mape", "directional_accuracy")
+    if (!is.data.frame(backtest) || !all(required %in% names(backtest))) {
+      stop("backtest must be a data.frame with columns: ",
+           paste(required, collapse = ", "))
+    }
+    ranked <- backtest[order(backtest$rmse), ]
+    sections <- c(sections, "",
+                  "## Backtest ranking (by RMSE)\n",
+                  md_table(ranked[, required, drop = FALSE]),
+                  "",
+                  sprintf("Best by RMSE: %s (RMSE %s). A low RMSE with low directional accuracy means the model gets magnitudes right without predicting direction — report both, never one alone.",
+                          ranked$method[1], fmt_num(ranked$rmse[1])))
+  }
+  sections <- c(sections, "",
+                sprintf("Last observed price: %s; forecasts continue from there.",
+                        fmt_num(history[length(history)])))
+  paste(sections, collapse = "\n")
+}
+
+#' Write a forecast report to a file (creating parent dirs as needed).
+write_forecast_report <- function(path, history, forecasts,
+                                  backtest = NULL,
+                                  title = "Forecast report") {
+  report <- build_forecast_report(history, forecasts, backtest, title)
+  dir <- dirname(path)
+  if (!dir.exists(dir)) {
+    dir.create(dir, recursive = TRUE)
+  }
+  writeLines(report, path)
+  invisible(path)
+}
