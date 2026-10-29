@@ -21,9 +21,10 @@ methods <- list(
   ar = list(p = 2),
   arima = list(order = c(1, 1, 0))
 )
-forecasts <- lapply(methods, function(args) {
-  do.call(forecast_price, c(list(x, h), args))
+forecasts <- lapply(names(methods), function(name) {
+  do.call(forecast_price, c(list(x, h, name), methods[[name]]))
 })
+names(forecasts) <- names(methods)
 # Keep the chart readable: history + the two most distinct forecasts.
 # (All six forecasts are tabulated in the report example instead.)
 shown <- forecasts[c("naive", "holt")]
