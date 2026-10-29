@@ -36,3 +36,34 @@ mape <- function(actual, forecast) {
   }
   mean(abs((pair$actual - pair$forecast) / pair$actual))
 }
+
+#' Directional accuracy: the fraction of steps where the forecast moves
+#' in the same direction as the actual, relative to `last` (the last
+#' observed value before the forecast window). A flat step counts as its
+#' own direction, so a flat forecast on a moving series scores 0 for
+#' those steps rather than getting credit for "no move".
+directional_accuracy <- function(actual, forecast, last) {
+  pair <- check_forecast_pair(actual, forecast)
+  if (length(last) != 1 || !is.numeric(last) || !is.finite(last)) {
+    stop("last must be a single finite number")
+  }
+  actual_dir <- sign(diff(c(last, pair$actual)))
+  forecast_dir <- sign(diff(c(last, pair$forecast)))
+  mean(actual_dir == forecast_dir)
+}
+
+#' All metrics for one forecast as a single-row data.frame. When `last`
+#' is supplied, directional accuracy is included; otherwise it is NA.
+evaluate_forecast <- function(actual, forecast, last = NULL) {
+  pair <- check_forecast_pair(actual, forecast)
+  directional <- if (is.null(last)) NA_real_ else {
+    directional_accuracy(pair$actual, pair$forecast, last)
+  }
+  data.frame(
+    n = length(pair$actual),
+    mae = mae(pair$actual, pair$forecast),
+    rmse = rmse(pair$actual, pair$forecast),
+    mape = mape(pair$actual, pair$forecast),
+    directional_accuracy = directional
+  )
+}
