@@ -141,8 +141,12 @@ forecast_plot_svg <- function(history, forecasts = list(),
     sprintf('<text x="%s" y="18" font-family="sans-serif" font-size="15" font-weight="bold">%s</text>',
             margin$left, svg_escape(title))
   )
-  # Y gridlines + labels.
-  for (tick in y_ticks(y_range)) {
+  # Y gridlines + labels. `pretty()` ticks can fall outside the padded
+  # range (e.g. 99 on a 99.5-105.5 range); expand the range to the tick
+  # extremes first, or the outer gridline lands outside the canvas.
+  ticks <- y_ticks(y_range)
+  y_range <- range(c(y_range, ticks))
+  for (tick in ticks) {
     y_px <- to_px(1, tick)$y
     parts <- c(parts,
       sprintf('<line x1="%s" y1="%.1f" x2="%s" y2="%.1f" stroke="#e0e0e0" />',
