@@ -61,3 +61,31 @@ y_ticks <- function(y_range, n = 5) {
   }
   pretty(y_range, n = n)
 }
+
+#' Serialise scaled points as one SVG `<polyline>` element.
+polyline_svg <- function(points, stroke, stroke_width = 2,
+                         dashed = FALSE) {
+  if (nrow(points) < 1) {
+    stop("polyline needs at least one point")
+  }
+  coords <- paste(sprintf("%.1f,%.1f", points$x, points$y),
+                  collapse = " ")
+  dash <- if (dashed) ' stroke-dasharray="6,4"' else ""
+  sprintf('<polyline points="%s" fill="none" stroke="%s" stroke-width="%s"%s />',
+          coords, svg_escape(stroke), stroke_width, dash)
+}
+
+#' Colour palette for forecast methods (colour-blind-friendly order).
+#' Unknown methods cycle through the palette by position.
+plot_palette <- c("#1f77b4", "#d62728", "#2ca02c", "#9467bd",
+                  "#ff7f0e", "#17becf", "#8c564b")
+
+method_color <- function(method, index) {
+  known <- c(naive = "#1f77b4", mean = "#7f7f7f", ma = "#2ca02c",
+             ses = "#ff7f0e", holt = "#d62728", ar = "#9467bd",
+             arima = "#17becf")
+  if (method %in% names(known)) {
+    return(unname(known[[method]]))
+  }
+  plot_palette[((index - 1) %% length(plot_palette)) + 1]
+}
