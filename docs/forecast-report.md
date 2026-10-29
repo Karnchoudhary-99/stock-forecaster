@@ -4,7 +4,7 @@
 
 | metric | value |
 | --- | --- |
-| observations | 120.00 |
+| observations | 120 |
 | minimum | 96.91 |
 | maximum | 122.95 |
 | mean | 109.16 |
@@ -27,7 +27,7 @@
 
 | method | rmse | mae | mape | directional_accuracy |
 | --- | --- | --- | --- | --- |
-| naive | 4.27 | 3.24 | 0.03 | 0.00 |
+| naive | 4.27 | 3.24 | 0.03 | 0 |
 | holt | 4.27 | 3.30 | 0.03 | 0.60 |
 | arima | 4.33 | 3.37 | 0.03 | 0.52 |
 | ar | 4.51 | 3.43 | 0.03 | 0.50 |

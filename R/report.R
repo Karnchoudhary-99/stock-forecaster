@@ -22,13 +22,11 @@ md_table <- function(df) {
   cells <- lapply(names(df), function(col) {
     vals <- df[[col]]
     if (is.numeric(vals)) {
-      # Whole-number columns (counts, horizons) read better as integers.
-      if (all(vals == round(vals), na.rm = TRUE)) {
-        vapply(vals, function(v) if (is.na(v)) "NA" else sprintf("%d", as.integer(v)),
-               character(1))
-      } else {
-        vapply(vals, fmt_num, character(1))
-      }
+      # Per-cell: whole numbers (counts, horizons) read better as
+      # integers, even in a column that also holds decimals.
+      vapply(vals, function(v) {
+        if (is.na(v)) "NA" else if (v == round(v)) sprintf("%d", as.integer(v)) else fmt_num(v)
+      }, character(1))
     } else {
       as.character(vals)
     }
