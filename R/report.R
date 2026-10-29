@@ -21,7 +21,17 @@ md_table <- function(df) {
   }
   cells <- lapply(names(df), function(col) {
     vals <- df[[col]]
-    if (is.numeric(vals)) vapply(vals, fmt_num, character(1)) else as.character(vals)
+    if (is.numeric(vals)) {
+      # Whole-number columns (counts, horizons) read better as integers.
+      if (all(vals == round(vals), na.rm = TRUE)) {
+        vapply(vals, function(v) if (is.na(v)) "NA" else sprintf("%d", as.integer(v)),
+               character(1))
+      } else {
+        vapply(vals, fmt_num, character(1))
+      }
+    } else {
+      as.character(vals)
+    }
   })
   header <- paste0("| ", paste(names(df), collapse = " | "), " |")
   separator <- paste0("| ", paste(rep("---", ncol(df)), collapse = " | "), " |")
