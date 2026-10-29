@@ -46,3 +46,27 @@ stopifnot(length(polylines) == 3)
 stopifnot(sum(grepl("dasharray", polylines)) == 2)
 
 cat("test-plot ok\n")
+
+# Validation + file writer (appended cases, same suite file).
+expect_error(scale_to_svg(1:2, c(100)))
+expect_error(scale_to_svg(1:2, c(100, NA)))
+expect_error(forecast_plot_svg(c(100, 101), list(c(102, 103))))  # unnamed
+expect_error(forecast_plot_svg(c(100, 101),
+                               list(a = c(102), b = c(102, 103))))  # lengths differ
+expect_error(forecast_plot_svg(numeric(0), list()))
+expect_error(y_ticks(c(100, 100)))
+expect_error(polyline_svg(data.frame(x = numeric(0), y = numeric(0)), "#000"))
+
+# write_forecast_svg creates parent dirs and writes a readable SVG.
+tmp <- file.path(tempdir(), "sf-plot", "chart.svg")
+write_forecast_svg(tmp, c(100, 102), list(naive = c(102, 102)))
+stopifnot(file.exists(tmp))
+back <- paste(readLines(tmp), collapse = "\n")
+stopifnot(grepl("<svg", back, fixed = TRUE), grepl("naive", back, fixed = TRUE))
+
+# No-forecast chart: history only, no origin divider.
+svg0 <- forecast_plot_svg(c(100, 101, 102))
+stopifnot(!grepl('>forecast<', svg0, fixed = TRUE))
+stopifnot(length(regmatches(svg0, gregexpr("<polyline[^>]+>", svg0))[[1]]) == 1)
+
+cat("test-plot validation ok\n")
