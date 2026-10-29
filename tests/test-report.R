@@ -50,3 +50,27 @@ stopifnot(regexpr("holt", bt_section, fixed = TRUE)[1] <
           regexpr("naive", bt_section, fixed = TRUE)[1])
 
 cat("test-report ok\n")
+
+# Validation + file writer (appended cases, same suite file).
+expect_error(md_table(data.frame()))
+expect_error(forecast_table(list()))
+expect_error(forecast_table(list(c(101, 102))))  # unnamed
+expect_error(forecast_table(list(a = c(101), b = c(101, 102))))  # lengths differ
+expect_error(build_forecast_report(c(100), list(naive = c(100)),
+                                   backtest = data.frame(method = "naive")))
+expect_error(series_summary(c(100, NA)))
+
+# Writer creates parent dirs and round-trips the report.
+tmp <- file.path(tempdir(), "sf-report", "report.md")
+write_forecast_report(tmp, c(100, 102), list(naive = c(102, 102)))
+stopifnot(file.exists(tmp))
+back <- paste(readLines(tmp), collapse = "\n")
+stopifnot(grepl("# Forecast report", back, fixed = TRUE))
+stopifnot(grepl("naive", back, fixed = TRUE))
+
+# Report without a backtest omits that section entirely.
+rep0 <- build_forecast_report(c(100, 102), list(naive = c(102)))
+stopifnot(!grepl("Backtest ranking", rep0, fixed = TRUE))
+stopifnot(grepl("Last observed price: 102.00", rep0, fixed = TRUE))
+
+cat("test-report validation ok\n")
