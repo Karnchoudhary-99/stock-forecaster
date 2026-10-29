@@ -53,3 +53,33 @@ series_summary <- function(x) {
     stringsAsFactors = FALSE
   )
 }
+
+#' Validate a named list of forecasts: same length, finite, named.
+check_forecasts <- function(forecasts) {
+  if (!is.list(forecasts) || length(forecasts) < 1) {
+    stop("forecasts must be a non-empty named list of numeric vectors")
+  }
+  if (is.null(names(forecasts)) || any(names(forecasts) == "")) {
+    stop("forecasts must be a named list")
+  }
+  for (name in names(forecasts)) {
+    forecasts[[name]] <- validate_series(forecasts[[name]])
+  }
+  h_lengths <- unique(vapply(forecasts, length, integer(1)))
+  if (length(h_lengths) != 1) {
+    stop("all forecasts must have the same length")
+  }
+  forecasts
+}
+
+#' Forecast table: one row per method, one column per horizon step.
+forecast_table <- function(forecasts) {
+  forecasts <- check_forecasts(forecasts)
+  h <- length(forecasts[[1]])
+  df <- data.frame(method = names(forecasts), stringsAsFactors = FALSE)
+  for (step in seq_len(h)) {
+    df[[paste0("step_", step)]] <- vapply(forecasts,
+                                         function(fc) fc[step], numeric(1))
+  }
+  df
+}
