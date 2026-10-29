@@ -11,7 +11,8 @@ compared, not just fitted.
 - [x] Models: naive, moving average, SES/Holt smoothing, AR/ARIMA(p,d,0)
 - [x] Backtesting: rolling-origin evaluation
 - [x] Metrics: MAE, RMSE, MAPE, directional accuracy
-- [ ] Forecast plots + report, then self-review checklist, then public
+- [x] Forecast plots (standalone SVG, no packages)
+- [ ] Forecast report, then self-review checklist, then public
 
 ## Quick start
 
@@ -87,6 +88,25 @@ whole story; the backtest table reports both.
 | `mape(actual, forecast)` | Mean absolute percentage error as a fraction; errors when any actual is zero, since MAPE is undefined there. |
 | `directional_accuracy(actual, forecast, last)` | Fraction of steps where the forecast moves the same way as the actual, relative to `last`. A flat step is its own direction, so flat forecasts on moving series get no free credit. |
 | `evaluate_forecast(actual, forecast, last = NULL)` | All of the above as one row (directional accuracy is `NA` without `last`). |
+
+## Forecast plots
+
+`R/plot.R` renders history + forecasts as a standalone SVG file — no
+graphics device, no packages — so plots work in CI and can be embedded
+in reports and READMEs. History is solid, forecasts are dashed and
+continue from the last observed point, with a divider at the forecast
+origin.
+
+```r
+source("R/plot.R")
+write_forecast_svg("docs/forecast-plot.svg", x,
+                   list(naive = naive_forecast(x, 10),
+                        holt = holt_forecast(x, 10)))
+```
+
+Run `Rscript examples/plot.R` to regenerate the sample chart:
+
+![Sample forecast chart](docs/forecast-plot.svg)
 
 ## Baseline models
 
